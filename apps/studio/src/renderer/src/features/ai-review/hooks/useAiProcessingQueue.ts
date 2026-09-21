@@ -11,8 +11,11 @@ import {
 } from "../utils/aiProcessingQueueEligibility";
 import {
   findNextAwaitingIndex,
+  mergeAppendedDesignsIntoList,
   resolveAdvanceIndexAfterProcessing,
+  resolveAutoQueueContinuationAfterLoadMore,
   shouldAutoQueueContinue,
+  shouldPrefetchNextAiProcessingPage,
 } from "../utils/aiProcessingQueueSelection";
 import {
   readAiProcessingAutoAdvancePreference,
@@ -46,6 +49,10 @@ interface UseAiProcessingQueueOptions {
    * current Processing run — used to skip redundant post-patch list reloads (Approach C).
    */
   hasTerminalAiProcessingLedgerEntry: (designId: string) => boolean;
+  hasMore: boolean;
+  isDesignsLoading: boolean;
+  isDesignsLoadingMore: boolean;
+  loadMoreDesigns: () => Promise<{ appendedDesigns: Design[]; hasMore: boolean } | null>;
   onActionError: (message: string | null) => void;
   /**
    * Called after a design finishes processing (manual single-image "Process" or the auto-advance
@@ -56,6 +63,7 @@ interface UseAiProcessingQueueOptions {
    */
   onQueueChanged?: () => void;
   reloadDesigns: () => Promise<void>;
+  queryKey: string;
   requestSelectDesign: (designId: string | null) => void;
   selectedDesignId: string | null;
   selectedIndex: number;
@@ -67,9 +75,14 @@ export function useAiProcessingQueue({
   defaultVisionModelId,
   designs,
   hasTerminalAiProcessingLedgerEntry,
+  hasMore,
+  isDesignsLoading,
+  isDesignsLoadingMore,
+  loadMoreDesigns,
   onActionError,
   onQueueChanged,
   reloadDesigns,
+  queryKey,
   requestSelectDesign,
   selectedDesignId,
   selectedIndex,
@@ -82,6 +95,8 @@ export function useAiProcessingQueue({
   const { registerCancelHandler, setActivityDialogCopy, setUploadActive } = useUploadActivity();
 
   const designsRef = useRef(designs);
+  const hasMoreRef = useRef(hasMore);
+  const isLoadingMoreRef = useRef(isDesignsLoadingMore);
   const isMountedRef = useRef(true);
   const runStateRef = useRef(runState);
   const stopRequestedRef = useRef(false);
@@ -97,6 +112,13 @@ export function useAiProcessingQueue({
    * reconcile the stale case without racing the real one.
    */
   const isAutoQueueLoopRunningRef = useRef(false);
+  const queueQueryKeyRef = useRef(queryKey);
+  const runQueryKeyRef = useRef<string | null>(null);
+  const activeTabRef = useRef(activeTab);
+  const autoQueueStartGuardRef = useRef(false);
+
+  queueQueryKeyRef.current = queryKey;
+  activeTabRef.current = activeTab;
 
   useEffect(() => {
     // Set true on (re)mount, not just via the initial useRef value: React 18 StrictMode runs
@@ -114,6 +136,14 @@ export function useAiProcessingQueue({
   useEffect(() => {
     designsRef.current = designs;
   }, [designs]);
+
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+
+  useEffect(() => {
+    isLoadingMoreRef.current = isDesignsLoadingMore;
+  }, [isDesignsLoadingMore]);
 
   useEffect(() => {
     selectedIndexRef.current = selectedIndex;
@@ -152,7 +182,9 @@ export function useAiProcessingQueue({
       autoAdvance &&
       runState === "idle" &&
       !isQueueBusy &&
-      awaitingDesigns.length > 0,
+      !isDesignsLoading &&
+      !isDesignsLoadingMore &&
+      (awaitingDesigns.length > 0 || hasMore),
   );
 
   const canStopAutoQueue = activeTab === "processing" && runState === "running";
@@ -303,6 +335,7 @@ export function useAiProcessingQueue({
       setRunState("running");
       runStateRef.current = "running";
       stopRequestedRef.current = false;
+      runQueryKeyRef.current = queueQueryKeyRef.current;
 
       try {
         let index = Math.max(0, startIndex);
@@ -315,28 +348,52 @@ export function useAiProcessingQueue({
             return;
           }
 
-          const currentDesigns = designsRef.current;
-
-          if (index >= currentDesigns.length) {
-            // Nothing left to select in this now-shrunk list — clear rather than leave
-            // selectedDesignId dangling on a design that may no longer exist here (see the
-            // nextAwaitingIndex < 0 branch below for the fuller explanation).
-            requestSelectDesign(null);
-            break;
+          if (
+            activeTabRef.current !== "processing" ||
+            queueQueryKeyRef.current !== runQueryKeyRef.current
+          ) {
+            return;
           }
 
-          const nextAwaitingIndex = findNextAwaitingIndex(currentDesigns, index);
+          const currentDesigns = designsRef.current;
+          const nextAwaitingIndex =
+            index >= currentDesigns.length ? -1 : findNextAwaitingIndex(currentDesigns, index);
 
           if (nextAwaitingIndex < 0) {
-            // No design remains awaiting AI start. If the previously-selected design (from the
-            // prior loop iteration) just left this filtered list — e.g. it was the last design
-            // awaiting and just completed — selectedDesignId would otherwise keep pointing at an
-            // ID no longer present in `designs`, permanently collapsing this hook's own
-            // selectedDesign derivation to null and disabling "Start AI" until an unrelated route
-            // remount re-selects a valid design (post-launch-catalog-and-processing-stability,
-            // Owner QA Amendment 1, Workstream 2).
-            requestSelectDesign(null);
-            break;
+            const page = await loadMoreDesigns();
+            if (
+              !isMountedRef.current ||
+              activeTabRef.current !== "processing" ||
+              queueQueryKeyRef.current !== runQueryKeyRef.current ||
+              stopRequestedRef.current ||
+              runStateRef.current !== "running"
+            ) {
+              return;
+            }
+
+            if (page?.appendedDesigns.length) {
+              designsRef.current = mergeAppendedDesignsIntoList(
+                designsRef.current,
+                page.appendedDesigns,
+              );
+            }
+            if (page) {
+              hasMoreRef.current = page.hasMore;
+            }
+
+            const continuation = resolveAutoQueueContinuationAfterLoadMore({
+              designs: designsRef.current,
+              searchFromIndex: index,
+              page,
+            });
+
+            if (continuation.action === "stop") {
+              requestSelectDesign(null);
+              break;
+            }
+
+            index = continuation.nextIndex;
+            continue;
           }
 
           index = nextAwaitingIndex;
@@ -359,7 +416,9 @@ export function useAiProcessingQueue({
           }
 
           await refreshDesignList({
-            skipListReload: hasTerminalAiProcessingLedgerEntry(design.id),
+            // Preserve cursor-appended pages; the enqueue response is patched locally and a
+            // reload here would reset the queue to page one.
+            skipListReload: true,
           });
 
           const refreshedDesigns = designsRef.current;
@@ -380,6 +439,31 @@ export function useAiProcessingQueue({
           if (failed) {
             index += 1;
           }
+
+          const remainingAwaitingCount = refreshedDesigns
+            .slice(Math.max(0, index))
+            .filter((item) => isDesignAwaitingAiStart(item)).length;
+          if (
+            shouldPrefetchNextAiProcessingPage({
+              hasMore: hasMoreRef.current,
+              isLoadingMore: isLoadingMoreRef.current,
+              remainingAwaitingCount,
+            })
+          ) {
+            void loadMoreDesigns().then((prefetchPage) => {
+              if (!prefetchPage?.appendedDesigns.length) {
+                if (prefetchPage) {
+                  hasMoreRef.current = prefetchPage.hasMore;
+                }
+                return;
+              }
+              designsRef.current = mergeAppendedDesignsIntoList(
+                designsRef.current,
+                prefetchPage.appendedDesigns,
+              );
+              hasMoreRef.current = prefetchPage.hasMore;
+            });
+          }
         }
 
         runStateRef.current = "idle";
@@ -398,7 +482,13 @@ export function useAiProcessingQueue({
           setRunState("idle");
         }
       } finally {
+        runStateRef.current = "idle";
+        if (isMountedRef.current) {
+          setRunState("idle");
+        }
         isAutoQueueLoopRunningRef.current = false;
+        autoQueueStartGuardRef.current = false;
+        runQueryKeyRef.current = null;
 
         // Always clear isQueueBusy — see the matching comment in processSelectedDesign's finally
         // block for why the isMountedRef guard here was unsafe (it could permanently strand
@@ -410,7 +500,7 @@ export function useAiProcessingQueue({
     [
       advanceSelectionToIndex,
       enqueueDesign,
-      hasTerminalAiProcessingLedgerEntry,
+      loadMoreDesigns,
       onActionError,
       refreshDesignList,
       requestSelectDesign,
@@ -419,7 +509,7 @@ export function useAiProcessingQueue({
 
 
   const startAutoQueue = useCallback(() => {
-    if (!canStartAutoQueue) {
+    if (!canStartAutoQueue || autoQueueStartGuardRef.current || isAutoQueueLoopRunningRef.current) {
       return;
     }
 
@@ -428,15 +518,17 @@ export function useAiProcessingQueue({
         ? selectedIndexRef.current
         : findNextAwaitingIndex(designsRef.current, 0);
 
-    if (startIndex < 0) {
+    if (startIndex < 0 && !hasMore) {
       return;
     }
 
+    autoQueueStartGuardRef.current = true;
     void runAutoQueueLoop(startIndex, {
       visionModelId: resolvedSessionVisionModelId,
     });
   }, [
     canStartAutoQueue,
+    hasMore,
     resolvedSessionVisionModelId,
     runAutoQueueLoop,
     selectedDesign,

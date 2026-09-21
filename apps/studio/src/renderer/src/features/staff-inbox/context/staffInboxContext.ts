@@ -20,6 +20,8 @@ export interface StaffInboxToast {
 export interface StaffInboxContextValue {
   openItems: StaffInboxItem[];
   completedItems: StaffInboxCompletedItem[];
+  hasMore: boolean;
+  isLoadingMore: boolean;
   badgeCounts: StaffInboxBadgeCounts;
   toasts: StaffInboxToast[];
   isPanelOpen: boolean;
@@ -36,6 +38,7 @@ export interface StaffInboxContextValue {
   dismissToast: (toastId: string) => void;
   openItem: (item: StaffInboxItem) => void;
   isItemHighlighted: (itemId: string) => boolean;
+  loadMore: () => Promise<void>;
 }
 
 export const StaffInboxContext = createContext<StaffInboxContextValue | null>(null);

@@ -1,8 +1,11 @@
 import type { GangSheetSectionPricingConfig } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
-import { calculateGangSheetCustomerSectionSummary } from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
 import {
-  buildShowAllocationOperationalSummary,
+  calculateShowAllocationTotalPriceUsd,
+  type ShowQueueAllocationPricingInput,
+  type ShowQueuePrintRequestItemPricingInput,
+} from "@fresh-prints/shared/utils/showAllocationDollarTotals";
+import {
   filterCurrentShowAllocations,
 } from "@fresh-prints/shared/utils/showAllocationSummaries";
 
@@ -29,30 +32,30 @@ export function calculateShowAllocationGroupPriceUsd(
     return null;
   }
 
-  // Keep pricing fail-closed for an active row with no usable width. The
-  // operational summary and pricing therefore use the same active set.
-  if (
-    activeAllocations.some(
-      (allocation) =>
-        typeof allocation.printWidthInches !== "number" ||
-        !Number.isFinite(allocation.printWidthInches) ||
-        allocation.printWidthInches <= 0,
-    )
-  ) {
-    return null;
-  }
+  const pricingItems = new Map<string, ShowQueuePrintRequestItemPricingInput>();
+  const pricingAllocations: ShowQueueAllocationPricingInput[] = activeAllocations.map((allocation, index) => {
+    const itemId = `studio-allocation-${index}`;
+    pricingItems.set(itemId, {
+      id: itemId,
+      quantity: 1,
+      printWidthInches: allocation.printWidthInches,
+      // Studio's historical fallback treats a missing height as one inch.
+      printHeightInches:
+        typeof allocation.printHeightInches === "number" &&
+        Number.isFinite(allocation.printHeightInches) &&
+        allocation.printHeightInches > 0
+          ? allocation.printHeightInches
+          : 1,
+    });
+    return {
+      status: allocation.status,
+      allocatedQuantity: allocation.allocatedQuantity,
+      printRequestItemId: itemId,
+      pricingSnapshot: allocation.pricingSnapshot,
+    };
+  });
 
-  try {
-    return activeAllocations.reduce((total, allocation) => {
-      if (allocation.pricingSnapshot) {
-        return total + allocation.pricingSnapshot.unitPriceUsd * allocation.allocatedQuantity;
-      }
-      const units = buildShowAllocationOperationalSummary([allocation]).pricingUnits;
-      return total + calculateGangSheetCustomerSectionSummary(units, pricing).totalPriceUsd;
-    }, 0);
-  } catch {
-    return null;
-  }
+  return calculateShowAllocationTotalPriceUsd(pricingAllocations, pricingItems, pricing);
 }
 
 /** Sums priced groups; ignores null (unpriced / inactive-only) groups. */

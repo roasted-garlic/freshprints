@@ -1,5 +1,8 @@
+import { randomBytes } from "node:crypto";
+
 import { onCall } from "firebase-functions/v2/https";
 
+import { resolveGangSheetSectionPricingFromSettings } from "../../packages/shared/src/constants/gangSheetSectionPricingSettings.constants";
 import type { PortalAdminUpcomingShowQueueDashboardResponse } from "../../packages/shared/src/types/portal/getPortalAdminUpcomingShowQueueDashboard.types";
 import { adminDb } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
@@ -7,10 +10,12 @@ import { internal, unauthenticated } from "./lib/errors";
 import {
   assertPortalAdminQueueCaller,
   buildPortalAdminUpcomingShowQueueDashboard,
+  type PortalAdminQueueDocument,
   validatePortalAdminUpcomingShowQueueDashboardRequest,
 } from "./lib/portalAdminUpcomingShowQueueDashboard";
 
 const REQUEST_GET_ALL_CHUNK_SIZE = 100;
+const PRINT_REQUEST_ITEM_REQUEST_ID_CHUNK_SIZE = 30;
 
 function resolveProjectId(): string {
   return (
@@ -43,6 +48,9 @@ export const getPortalAdminUpcomingShowQueueDashboard = onCall(
       assertPortalAdminQueueCaller(caller);
 
       const now = new Date();
+      const customerGroupKeySalt = randomBytes(16).toString("hex");
+      const pricingSettingsSnapshot = await adminDb.collection("settings").doc("showQueue").get();
+      const pricing = resolveGangSheetSectionPricingFromSettings(pricingSettingsSnapshot.data() ?? {});
       const showsSnapshot = await adminDb.collection("upcomingShows").get();
       const showDocuments = showsSnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -56,12 +64,15 @@ export const getPortalAdminUpcomingShowQueueDashboard = onCall(
         shows: showDocuments,
         selectedShowAllocations: [],
         requests: new Map(),
+        customerGroupKeySalt,
+        pricing,
       });
 
       const selectedShowId = provisional.selectedShowId;
       let selectedShowAllocations: Array<{ id: string; data: Record<string, unknown> }> = [];
       const requestMap = new Map<string, Record<string, unknown>>();
       const customerMap = new Map<string, Record<string, unknown>>();
+      const requestItems = new Map<string, PortalAdminQueueDocument[]>();
 
       if (selectedShowId) {
         const allocationsSnapshot = await adminDb
@@ -89,6 +100,28 @@ export const getPortalAdminUpcomingShowQueueDashboard = onCall(
             if (snapshot.exists) {
               requestMap.set(snapshot.id, snapshot.data() as Record<string, unknown>);
             }
+          });
+        }
+
+        for (
+          let index = 0;
+          index < requestIds.length;
+          index += PRINT_REQUEST_ITEM_REQUEST_ID_CHUNK_SIZE
+        ) {
+          const requestIdChunk = requestIds.slice(index, index + PRINT_REQUEST_ITEM_REQUEST_ID_CHUNK_SIZE);
+          const itemSnapshot = await adminDb
+            .collection("printRequestItems")
+            .where("printRequestId", "in", requestIdChunk)
+            .get();
+          itemSnapshot.docs.forEach((snapshot) => {
+            const data = snapshot.data() as Record<string, unknown>;
+            const printRequestId = typeof data.printRequestId === "string" ? data.printRequestId.trim() : "";
+            if (!printRequestId || !requestIds.includes(printRequestId)) {
+              return;
+            }
+            const list = requestItems.get(printRequestId) ?? [];
+            list.push({ id: snapshot.id, data });
+            requestItems.set(printRequestId, list);
           });
         }
 
@@ -121,6 +154,9 @@ export const getPortalAdminUpcomingShowQueueDashboard = onCall(
         selectedShowAllocations,
         requests: requestMap,
         customers: customerMap,
+        requestItems,
+        pricing,
+        customerGroupKeySalt,
       });
     } catch (error) {
       mapHttpsError(error);

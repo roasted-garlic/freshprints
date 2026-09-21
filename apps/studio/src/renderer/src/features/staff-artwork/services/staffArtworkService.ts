@@ -15,6 +15,7 @@ import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 
 import type { StaffArtwork, StaffArtworkSummary } from "@fresh-prints/shared/types/staffArtwork/staffArtwork.types";
+import type { PromoteStaffArtworkToAiReviewResponse } from "@fresh-prints/shared/types/staffArtwork/staffArtworkAiReview.types";
 import { db, functions, storage } from "../../../config/firebase";
 import type { User } from "../../users/types/user.types";
 import { permissionService } from "../../permissions/services/permissionService";
@@ -254,9 +255,9 @@ export const staffArtworkService = {
     return result.data;
   },
 
-  async promote(caller: User, staffArtworkId: string): Promise<{ designId: string; alreadyPromoted: boolean }> {
+  async promote(caller: User, staffArtworkId: string): Promise<PromoteStaffArtworkToAiReviewResponse> {
     if (!permissionService.canManageStaffArtwork(caller)) throw new Error("Only owners and admins may promote Staff Artwork.");
-    const call = httpsCallable<unknown, { designId: string; alreadyPromoted: boolean }>(functions, "promoteStaffArtworkToAiReview");
+    const call = httpsCallable<unknown, PromoteStaffArtworkToAiReviewResponse>(functions, "promoteStaffArtworkToAiReview");
     try {
       const result = await call({ staffArtworkId });
       return result.data;

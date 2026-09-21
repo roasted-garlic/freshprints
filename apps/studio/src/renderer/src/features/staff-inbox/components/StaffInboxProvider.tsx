@@ -19,7 +19,11 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { useGangSheetSettings } from "../../settings/hooks/useGangSheetSettings";
 import { StaffInboxContext, type StaffInboxToast } from "../context/staffInboxContext";
-import type { StaffInboxSubscriptionSnapshot } from "../services/staffInboxSubscriptionService";
+import type {
+  StaffInboxSubscriptionController,
+  StaffInboxSubscriptionPagination,
+  StaffInboxSubscriptionSnapshot,
+} from "../services/staffInboxSubscriptionService";
 import type { StaffInboxShowSnapshot } from "@fresh-prints/shared/staffInbox/staffInboxShowSnapshots";
 import type { StaffInboxAckRecord } from "../services/staffInboxAckLegacyLocalStore";
 import {
@@ -48,6 +52,17 @@ const EMPTY_SUBSCRIPTION_SNAPSHOT: StaffInboxSubscriptionSnapshot = {
   portalAllocations: [],
   shows: [],
   designIssueReports: [],
+};
+
+const EMPTY_SUBSCRIPTION_PAGINATION: StaffInboxSubscriptionPagination = {
+  hasMore: false,
+  isLoadingMore: false,
+  loadedCounts: {
+    portalRequests: 0,
+    portalAllocations: 0,
+    shows: 0,
+    designIssueReports: 0,
+  },
 };
 
 interface StaffInboxProviderProps {
@@ -100,6 +115,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const [completedItems, setCompletedItems] = useState<StaffInboxCompletedItem[]>([]);
   const [ackRecords, setAckRecords] = useState<StaffInboxAckRecord[]>([]);
   const [subscriptionSnapshot, setSubscriptionSnapshot] = useState(EMPTY_SUBSCRIPTION_SNAPSHOT);
+  const [subscriptionPagination, setSubscriptionPagination] = useState(EMPTY_SUBSCRIPTION_PAGINATION);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -129,6 +145,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const migrationStartedRef = useRef<string | null>(null);
   const evaluateAlertsRef = useRef<(snapshot: StaffInboxSubscriptionSnapshot) => void>(() => undefined);
   const subscriptionSnapshotRef = useRef(subscriptionSnapshot);
+  const subscriptionControllerRef = useRef<StaffInboxSubscriptionController | null>(null);
 
   useEffect(() => {
     acknowledgedItemIdsRef.current = acknowledgedItemIds;
@@ -470,6 +487,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   useEffect(() => {
     if (!isEnabled) {
       setSubscriptionSnapshot(EMPTY_SUBSCRIPTION_SNAPSHOT);
+      setSubscriptionPagination(EMPTY_SUBSCRIPTION_PAGINATION);
       setError(null);
       setWarning(null);
       previousQueuedGroupKeysRef.current = null;
@@ -499,16 +517,31 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       return;
     }
 
-    const unsubscribe = staffInboxSubscriptionService.subscribe((state) => {
+    const subscriptionController = staffInboxSubscriptionService.subscribe((state) => {
       subscriptionHydratedRef.current = true;
       setSubscriptionSnapshot(state.snapshot);
+      setSubscriptionPagination(state.pagination);
       setError(buildInboxErrorMessage(state.requestError, state.allocationError));
       setWarning(buildInboxWarningMessage(state.requestError, state.allocationError, state.showError, state.designIssueReportError));
       evaluateAlerts(state.snapshot);
     });
+    subscriptionControllerRef.current = subscriptionController;
 
-    return unsubscribe;
+    return () => {
+      if (subscriptionControllerRef.current === subscriptionController) {
+        subscriptionControllerRef.current = null;
+      }
+      subscriptionController.unsubscribe();
+    };
   }, [evaluateAlerts, isEnabled]);
+
+  const loadMore = useCallback(async () => {
+    try {
+      await subscriptionControllerRef.current?.loadMore();
+    } catch (caught) {
+      setWarning(caught instanceof Error ? caught.message : "Unable to load older inbox alerts.");
+    }
+  }, []);
 
   useEffect(() => {
     if (!isEnabled || !user?.id) {
@@ -559,7 +592,9 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
           occurredAtMillis: report.createdAtMillis,
           designIssueReport: report,
         }));
-      return [...reports, ...existing].sort((left, right) => right.occurredAtMillis - left.occurredAtMillis);
+      return [...reports, ...existing].sort(
+        (left, right) => right.occurredAtMillis - left.occurredAtMillis || left.id.localeCompare(right.id),
+      );
     },
     [
       acknowledgedItemIds,
@@ -848,6 +883,8 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     () => ({
       openItems,
       completedItems: enrichedCompletedItems,
+      hasMore: subscriptionPagination.hasMore,
+      isLoadingMore: subscriptionPagination.isLoadingMore,
       badgeCounts,
       toasts,
       isPanelOpen,
@@ -863,6 +900,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       dismissToast,
       openItem,
       isItemHighlighted,
+      loadMore,
     }),
     [
       acknowledgeItem,
@@ -875,10 +913,13 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       gangSheetSettings.settings.sectionPricing,
       isEnabled,
       isItemHighlighted,
+      loadMore,
       isPanelOpen,
       openItem,
       openItems,
       restoreItem,
+      subscriptionPagination.hasMore,
+      subscriptionPagination.isLoadingMore,
       toasts,
       togglePanel,
       warning,

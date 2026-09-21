@@ -569,6 +569,21 @@
   gap: var(--space-3);
 }
 
+.staff-inbox-load-more {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+  padding: var(--space-2) 0;
+}
+
+.staff-inbox-load-more-status {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
 .staff-inbox-toast-host {
   bottom: var(--space-4);
   display: grid;

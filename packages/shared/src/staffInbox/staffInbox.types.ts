@@ -17,6 +17,8 @@ export interface StaffInboxPortalAllocationSnapshot {
   requestNameSnapshot: string;
   status: string;
   createdAtMillis: number;
+  /** Firestore ordering timestamp used by the paged source subscription. */
+  updatedAtMillis?: number;
   /** Allocated print quantity for this row (required for glance metrics). */
   allocatedQuantity?: number;
   printRequestItemId?: string;

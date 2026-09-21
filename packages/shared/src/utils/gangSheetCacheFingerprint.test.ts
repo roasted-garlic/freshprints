@@ -317,3 +317,54 @@ test("request item identity and human-readable sheet label participate in cache 
     buildGangSheetCacheFingerprint({ ...base, cacheScope: "print-request:req-2" }),
   );
 });
+
+test("grouped and continuous fingerprints include normalized request/customer heading inputs", () => {
+  for (const layoutMode of ["grouped_by_customer", "customer_grouped_continuous"] as const) {
+    const groupedBase = sampleRequest({
+      layoutMode,
+      images: sampleRequest().images.map((image) => ({
+        ...image,
+        grouping: {
+          printRequestId: "req-1",
+          requestName: "alice-IR001",
+          customerId: "customer-1",
+          customerUsernameSnapshot: "Alice",
+          isInternal: false,
+        },
+      })),
+    });
+    const renamedRequest = buildGangSheetCacheFingerprint({
+      ...groupedBase,
+      images: groupedBase.images.map((image) => ({
+        ...image,
+        grouping: image.grouping ? { ...image.grouping, requestName: "alice-IR002" } : undefined,
+      })),
+    });
+    const renamedCustomer = buildGangSheetCacheFingerprint({
+      ...groupedBase,
+      images: groupedBase.images.map((image) => ({
+        ...image,
+        grouping: image.grouping
+          ? { ...image.grouping, customerUsernameSnapshot: "Bob" }
+          : undefined,
+      })),
+    });
+    const normalizedEquivalent = buildGangSheetCacheFingerprint({
+      ...groupedBase,
+      images: groupedBase.images.map((image) => ({
+        ...image,
+        grouping: image.grouping
+          ? {
+              ...image.grouping,
+              requestName: "  alice-IR001  ",
+              customerUsernameSnapshot: " alice ",
+            }
+          : undefined,
+      })),
+    });
+
+    assert.notEqual(buildGangSheetCacheFingerprint(groupedBase), renamedRequest);
+    assert.notEqual(buildGangSheetCacheFingerprint(groupedBase), renamedCustomer);
+    assert.equal(buildGangSheetCacheFingerprint(groupedBase), normalizedEquivalent);
+  }
+});

@@ -7,6 +7,11 @@ import type { PortalAdminShowCapacityDto } from '@fresh-prints/shared/types/port
 import { PortalAdminShowPickerModal } from '../components/PortalAdminShowPickerModal';
 import { PortalAdminViewDesignsModal } from '../components/PortalAdminViewDesignsModal';
 import { usePortalAdminShowQueue } from '../hooks/usePortalAdminShowQueue';
+import {
+  filterPortalAdminShowQueueRequests,
+  groupPortalAdminShowQueueRequests,
+  sumPortalAdminShowAllocationTotalPriceUsd,
+} from '../utils/portalAdminShowQueueSearch';
 
 function formatDateTime(scheduledStartAtMs: number | null, timeZone: string): string {
   if (scheduledStartAtMs === null) {
@@ -26,29 +31,45 @@ function formatPercent(capacity: PortalAdminShowCapacityDto): string | null {
   return `${Math.round(capacity.percentUsed)}% Full`;
 }
 
-function kindLabel(kind: 'customer' | 'internal' | 'unknown'): string {
-  if (kind === 'customer') return 'Customer';
-  if (kind === 'internal') return 'Internal';
-  return 'Unknown';
+function formatUsd(amount: number | null | undefined): string {
+  if (amount == null || !Number.isFinite(amount)) {
+    return 'Unpriced';
+  }
+  return new Intl.NumberFormat('en-US', {
+    currency: 'USD',
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+    style: 'currency',
+  }).format(amount);
 }
 
-function requestOwnerLabel(request: {
-  kind: 'customer' | 'internal' | 'unknown';
-  customerIdentityLabel?: string;
-}): string {
-  if (request.customerIdentityLabel?.trim()) {
-    return request.customerIdentityLabel.trim();
-  }
-  return kindLabel(request.kind);
+function formatGroupPrice(amount: number): string {
+  return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
+}
+
+function formatRequestCountLabel(count: number): string {
+  return `${count} request${count === 1 ? '' : 's'}`;
+}
+
+function formatTotalQuantityLabel(quantity: number): string {
+  return `${quantity} total qty`;
 }
 
 export function PortalAdminShowQueuePage() {
   const { data, error, isLoading, selectedShowId, refresh, selectShow } = usePortalAdminShowQueue();
   const [modal, setModal] = useState<{ printRequestId: string; requestName: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedGroupKeys, setExpandedGroupKeys] = useState<ReadonlySet<string>>(() => new Set());
 
   useEffect(() => {
     setModal(null);
+    setSearchQuery('');
+    setExpandedGroupKeys(new Set());
   }, [selectedShowId]);
+
+  useEffect(() => {
+    setExpandedGroupKeys(new Set());
+  }, [searchQuery]);
 
   const selected = data?.selected ?? null;
   const capacityBarWidth = useMemo(() => {
@@ -59,6 +80,18 @@ export function PortalAdminShowQueuePage() {
   }, [selected]);
 
   const percentLabel = selected ? formatPercent(selected.capacity) : null;
+  const filteredRequests = useMemo(
+    () => filterPortalAdminShowQueueRequests(selected?.requests ?? [], searchQuery),
+    [searchQuery, selected?.requests],
+  );
+  const requestGroups = useMemo(
+    () => groupPortalAdminShowQueueRequests(filteredRequests),
+    [filteredRequests],
+  );
+  const showTotalPriceUsd = useMemo(
+    () => sumPortalAdminShowAllocationTotalPriceUsd(selected?.requests ?? []),
+    [selected?.requests],
+  );
 
   return (
     <div className="portal-admin-dashboard">
@@ -115,6 +148,10 @@ export function PortalAdminShowQueuePage() {
                 <span>Print Requests</span>
                 <strong>{selected.prQty}</strong>
               </div>
+              <div>
+                <span>Show total</span>
+                <strong>{formatUsd(showTotalPriceUsd)}</strong>
+              </div>
             </div>
 
             <div className="portal-admin-capacity" aria-label="Show capacity">
@@ -135,38 +172,122 @@ export function PortalAdminShowQueuePage() {
             {selected.requests.length === 0 ? (
               <p className="portal-admin-empty">No active Print Requests attached to this show.</p>
             ) : (
-              <div className="portal-admin-request-list">
-                {selected.requests.map((request) => (
-                  <article className="portal-admin-request-card" key={request.printRequestId}>
-                    <header>
-                      <div>
-                        <h3>{request.name}</h3>
-                        <p>{requestOwnerLabel(request)}</p>
-                      </div>
-                      <button
-                        className="portal-button portal-button-secondary"
-                        onClick={() =>
-                          setModal({
-                            printRequestId: request.printRequestId,
-                            requestName: request.name,
-                          })
-                        }
-                        type="button"
-                      >
-                        View Designs
-                      </button>
-                    </header>
-                    <div className="portal-admin-request-stats" aria-label="Request totals">
-                      <span className="portal-admin-stat-pill">
-                        Designs <strong>{request.designQty}</strong>
-                      </span>
-                      <span className="portal-admin-stat-pill">
-                        Prints <strong>{request.printQty}</strong>
-                      </span>
-                    </div>
-                  </article>
-                ))}
-              </div>
+              <>
+                <div aria-label="Search Print Requests" className="portal-admin-request-search" role="search">
+                  <label htmlFor="portal-admin-request-search-input">Search Print Requests</label>
+                  <input
+                    aria-describedby="portal-admin-request-search-results"
+                    id="portal-admin-request-search-input"
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onInput={(event) => setSearchQuery(event.currentTarget.value)}
+                    placeholder="Request title or customer"
+                    type="search"
+                    value={searchQuery}
+                  />
+                  <p aria-live="polite" id="portal-admin-request-search-results">
+                    {searchQuery.trim()
+                      ? `${filteredRequests.length} of ${selected.requests.length} requests shown`
+                      : `${selected.requests.length} requests`}
+                  </p>
+                </div>
+                {requestGroups.length === 0 ? (
+                  <p className="portal-admin-empty">No Print Requests match this search.</p>
+                ) : (
+                  <div className="portal-admin-request-groups">
+                    {requestGroups.map((group) => {
+                      const groupKey =
+                        group.customerGroupKey || group.requests[0]?.printRequestId || group.label;
+                      const safeId = groupKey.replace(/[^a-zA-Z0-9_-]/g, '-');
+                      const headingId = `portal-admin-request-group-${safeId}`;
+                      const panelId = `portal-admin-request-group-panel-${safeId}`;
+                      const isExpanded = expandedGroupKeys.has(groupKey);
+                      return (
+                        <section
+                          aria-labelledby={headingId}
+                          className={`portal-admin-request-group${isExpanded ? ' is-expanded' : ''}`}
+                          key={groupKey}
+                        >
+                          <h3 className="portal-admin-request-group-heading" id={headingId}>
+                            <button
+                              aria-controls={panelId}
+                              aria-expanded={isExpanded}
+                              className="portal-admin-request-group-toggle"
+                              onClick={() => {
+                                setExpandedGroupKeys((current) => {
+                                  const next = new Set(current);
+                                  if (next.has(groupKey)) {
+                                    next.delete(groupKey);
+                                  } else {
+                                    next.add(groupKey);
+                                  }
+                                  return next;
+                                });
+                              }}
+                              type="button"
+                            >
+                              <span aria-hidden="true" className="portal-admin-request-group-chevron">
+                                {isExpanded ? '▾' : '▸'}
+                              </span>
+                              <span className="portal-admin-request-group-toggle-main">
+                                <span className="portal-admin-request-group-label">{group.label}</span>
+                                <span className="portal-admin-request-group-request-count">
+                                  {formatRequestCountLabel(group.requestCount)}
+                                </span>
+                              </span>
+                              <span className="portal-admin-request-group-total">
+                                <span>{formatTotalQuantityLabel(group.totalQuantity)}</span>
+                                {group.totalPriceUsd !== null ? (
+                                  <strong>{formatGroupPrice(group.totalPriceUsd)}</strong>
+                                ) : (
+                                  <strong>Unpriced</strong>
+                                )}
+                              </span>
+                            </button>
+                          </h3>
+                          {isExpanded ? (
+                            <div className="portal-admin-request-list" id={panelId}>
+                              {group.requests.map((request) => (
+                                <article className="portal-admin-request-card" key={request.printRequestId}>
+                                  <header>
+                                    <div>
+                                      <h4>{request.name}</h4>
+                                    </div>
+                                    <button
+                                      className="portal-button portal-button-secondary"
+                                      onClick={() =>
+                                        setModal({
+                                          printRequestId: request.printRequestId,
+                                          requestName: request.name,
+                                        })
+                                      }
+                                      type="button"
+                                    >
+                                      View Designs
+                                    </button>
+                                  </header>
+                                  <div className="portal-admin-request-stats" aria-label="Request metrics">
+                                    <span className="portal-admin-stat-pill">
+                                      Designs <strong>{request.designQty}</strong>
+                                    </span>
+                                    <span className="portal-admin-stat-pill">
+                                      Prints <strong>{request.printQty}</strong>
+                                    </span>
+                                    <span className="portal-admin-stat-pill">
+                                      Request total <strong>{formatUsd(request.requestTotalPriceUsd)}</strong>
+                                    </span>
+                                  </div>
+                                </article>
+                              ))}
+                            </div>
+                          ) : (
+                            <div hidden id={panelId} />
+                          )}
+                        </section>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </>
         ) : null}

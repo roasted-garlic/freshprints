@@ -31,4 +31,18 @@ describe("staffInboxAlertOrdering", () => {
 
     assert.ok(compareStaffInboxItemsForDisplay(queued, full) < 0);
   });
+
+  it("uses the alert id as a deterministic final tie-breaker", () => {
+    const first = {
+      id: "show_queue_full:show-a",
+      kind: "show_queue_full" as const,
+      title: "A",
+      subtitle: "Full",
+      occurredAtMillis: 500,
+    };
+    const second = { ...first, id: "show_queue_full:show-b" };
+
+    assert.ok(compareStaffInboxItemsForDisplay(first, second) < 0);
+    assert.ok(compareStaffInboxItemsForDisplay(second, first) > 0);
+  });
 });

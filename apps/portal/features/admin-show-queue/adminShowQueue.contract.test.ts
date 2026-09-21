@@ -44,7 +44,6 @@ describe('Portal admin Show Queue architecture contracts', () => {
     assert.match(pageSource, /designQty/);
     assert.match(pageSource, /printQty/);
     assert.match(pageSource, /prQty/);
-    assert.match(pageSource, /requestOwnerLabel/);
     assert.match(pageSource, /portal-admin-stat-pill/);
     assert.doesNotMatch(pageSource, /statusSummary/);
     assert.doesNotMatch(pageSource, /Customer Request/);
@@ -54,6 +53,29 @@ describe('Portal admin Show Queue architecture contracts', () => {
     assert.match(pageSource, /No upcoming Show Queue shows/);
     assert.doesNotMatch(pageSource, />Start<|>Pause<|>Resume<|>Finish<|>Move<|>Release<|>Export</);
     assert.doesNotMatch(pageSource, /items\.map/);
+  });
+
+  it('provides accessible request search, grouped cards, and separate totals', () => {
+    assert.match(pageSource, /Search Print Requests/);
+    assert.match(pageSource, /portal-admin-request-search-input/);
+    assert.match(pageSource, /type="search"/);
+    assert.match(pageSource, /Request title or customer/);
+    assert.match(pageSource, /onInput=\{/);
+    assert.doesNotMatch(pageSource, /Clear search/);
+    assert.doesNotMatch(pageSource, /Request ID/);
+    assert.match(pageSource, /groupPortalAdminShowQueueRequests/);
+    assert.match(pageSource, /portal-admin-request-group-toggle/);
+    assert.match(pageSource, /aria-expanded=/);
+    assert.match(pageSource, /expandedGroupKeys/);
+    assert.match(pageSource, /formatRequestCountLabel/);
+    assert.match(pageSource, /formatTotalQuantityLabel/);
+    assert.match(pageSource, /Request total/);
+    assert.match(pageSource, /Show total/);
+    assert.doesNotMatch(pageSource, /Selected-show total/);
+    assert.match(pageSource, /sumPortalAdminShowAllocationTotalPriceUsd/);
+    assert.match(styleSource, /portal-admin-request-groups/);
+    assert.match(styleSource, /portal-admin-request-group-toggle/);
+    assert.match(styleSource, /portal-admin-request-search/);
   });
 
   it('lazy-loads designs in a modal and clears modal on show change', () => {
@@ -80,6 +102,16 @@ describe('Portal admin Show Queue architecture contracts', () => {
     assert.match(styleSource, /portal-admin-designs-modal/);
     assert.match(styleSource, /portal-admin-design-lightbox/);
     assert.match(styleSource, /--color-artwork-preview-bg/);
+  });
+
+  it('applies artwork preview background on thumbnails for any source that provides hex', () => {
+    assert.match(modalSource, /item\.artworkBackgroundHex/);
+    assert.match(modalSource, /--color-artwork-preview-bg/);
+    assert.doesNotMatch(
+      modalSource,
+      /item\.source === 'catalog_design' && item\.artworkBackgroundHex/,
+    );
+    assert.match(styleSource, /\.portal-admin-design-thumb \{[\s\S]*?background: var\(--color-artwork-preview-bg/);
   });
 
   it('opens show selection from a header hamburger on desktop and mobile', () => {

@@ -19,6 +19,10 @@ import type {
   StaffArtworkStatus,
   StaffArtworkSummary,
 } from "@fresh-prints/shared/types/staffArtwork/staffArtwork.types";
+import type {
+  PromoteStaffArtworkToAiReviewResponse,
+  StaffArtworkAiLifecycleReason,
+} from "@fresh-prints/shared/types/staffArtwork/staffArtworkAiReview.types";
 import {
   describeStaffArtworkActiveShowBlockNotice,
   describeStaffArtworkDeletionBlockers,
@@ -46,11 +50,14 @@ import type { ArtworkBackgroundFieldsValues } from "../../designs/components/Art
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { ImportArtworkBackgroundQuickPicker } from "../../imports/components/ImportArtworkBackgroundQuickPicker";
 import { enqueueImportedDesignsForBackgroundAi } from "../../imports/services/importAiBackgroundQueue";
+import { aiEnrichmentEnqueueService } from "../../ai-review/services/aiEnrichmentEnqueueService";
 import { readAiProcessingAutoProcessPreference } from "../../ai-review/utils/aiProcessingAutoProcessPreference";
 import { runAiReviewBulkReprocess, type AiReviewBulkReprocessResult } from "../../ai-review/utils/aiReviewBulkReprocess";
+import { designReprocessWithAiService } from "../../designs/services/designReprocessWithAiService";
 import { permissionService } from "../../permissions/services/permissionService";
 import { getPrintRequestsPath } from "../../print-requests/constants/printRequestRoutes";
 import { printRequestService } from "../../print-requests/services/printRequestService";
+import type { User } from "../../users/types/user.types";
 import { SendStaffArtworkToAiReviewConfirmDialog } from "../components/SendStaffArtworkToAiReviewConfirmDialog";
 import { useStaffArtworkList } from "../hooks/useStaffArtworkList";
 import { staffArtworkService } from "../services/staffArtworkService";
@@ -90,6 +97,56 @@ function pendingUploadMatHex(item: PendingUploadItem): string | null {
   if (item.backgroundChoice === "dark") return ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK;
   if (item.backgroundChoice === "light") return null;
   return item.autoSuggestsDark ? ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK : null;
+}
+
+function describeStaffArtworkAiNoOp(reason: StaffArtworkAiLifecycleReason): string {
+  switch (reason) {
+    case "already_processing":
+      return "The linked design is already processing; no duplicate AI enqueue was sent.";
+    case "already_needs_review":
+      return "The linked design is already in AI Review; no duplicate AI enqueue was sent.";
+    case "already_approved":
+      return "The linked design is already approved; no AI enqueue was sent.";
+    case "linked_design_missing":
+      return "The linked design was not found, so no AI enqueue was sent.";
+    default:
+      return "The linked design is outside the supported AI lifecycle, so no AI enqueue was sent.";
+  }
+}
+
+async function routeStaffArtworkAiLifecycle(
+  user: User,
+  promotion: PromoteStaffArtworkToAiReviewResponse,
+  autoStart: boolean,
+): Promise<{ warning?: string }> {
+  switch (promotion.aiLifecycle.action) {
+    case "plain_enqueue":
+      enqueueImportedDesignsForBackgroundAi([promotion.designId]);
+      return {};
+    case "reprocess_ready":
+      if (!permissionService.canReprocessReadyDesignWithAi(user)) {
+        return {
+          warning: "The linked Ready design requires owner permission to reprocess, so no AI enqueue was sent.",
+        };
+      }
+      await designReprocessWithAiService.reprocessReadyDesignWithAi(user, promotion.designId, {
+        autoStart: false,
+      });
+      if (autoStart) {
+        enqueueImportedDesignsForBackgroundAi([promotion.designId]);
+      }
+      return {};
+    case "reset_rejected":
+      await aiEnrichmentEnqueueService.resetForProcessing(promotion.designId);
+      if (autoStart) {
+        enqueueImportedDesignsForBackgroundAi([promotion.designId]);
+      }
+      return {};
+    case "no_op":
+      return { warning: describeStaffArtworkAiNoOp(promotion.aiLifecycle.reason) };
+    default:
+      return { warning: "The linked design was not eligible for AI processing; no AI enqueue was sent." };
+  }
 }
 
 function artworkBackgroundStyle(hex: string | null | undefined) {
@@ -939,9 +996,9 @@ export function StaffArtworkPage() {
     try {
       const promotedId = promotingArtwork.id;
       const promotedTitle = promotingArtwork.title;
-      const result = await staffArtworkService.promote(user, promotedId);
       const autoStart = readAiProcessingAutoProcessPreference();
-      enqueueImportedDesignsForBackgroundAi([result.designId]);
+      const result = await staffArtworkService.promote(user, promotedId);
+      const routing = await routeStaffArtworkAiLifecycle(user, result, autoStart);
       removeArtwork(promotedId);
       setSelectedAiArtworkIds((current) => {
         const next = new Set(current);
@@ -956,10 +1013,10 @@ export function StaffArtworkPage() {
       setSuccessNotice(
         result.alreadyPromoted
           ? `"${promotedTitle}" was already in AI Review. Removed from Staff Artwork.${
-              autoStart ? " Processing continues in the background." : " Start AI when ready."
+              routing.warning ?? (autoStart ? " Processing continues in the background." : " Start AI when ready.")
             }`
           : `"${promotedTitle}" sent to AI and removed from this library.${
-              autoStart ? " Processing starts in the background." : " Start AI when ready."
+              routing.warning ?? (autoStart ? " Processing starts in the background." : " Start AI when ready.")
             }`,
       );
       setPromotingArtwork(null);
@@ -1027,7 +1084,7 @@ export function StaffArtworkPage() {
 
           try {
             const promoted = await staffArtworkService.promote(user, artworkId);
-            enqueueImportedDesignsForBackgroundAi([promoted.designId]);
+            const routing = await routeStaffArtworkAiLifecycle(user, promoted, autoStart);
             removeArtwork(artworkId);
             setPreviewUrls((current) => {
               const next = { ...current };
@@ -1038,12 +1095,13 @@ export function StaffArtworkPage() {
             const alreadyCurrentWarning = promoted.alreadyPromoted
               ? "Already in AI Review; no duplicate catalog design was created."
               : undefined;
+            const routingWarning = routing.warning;
             const autoWarning = autoStart
               ? undefined
               : "Auto-process is off; start AI from the Processing tab when ready.";
             return {
               ok: true as const,
-              warning: [alreadyCurrentWarning, autoWarning].filter(Boolean).join(" ") || undefined,
+              warning: [alreadyCurrentWarning, routingWarning, autoWarning].filter(Boolean).join(" ") || undefined,
             };
           } catch (cause) {
             return {

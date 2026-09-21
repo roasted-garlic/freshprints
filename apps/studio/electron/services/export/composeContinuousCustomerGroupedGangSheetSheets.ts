@@ -8,8 +8,9 @@ import {
   buildGangSheetLabelSvg,
   buildGroupedSectionHeadingSvg,
   computeGangSheetLabelBandHeightPx,
-  computeGroupedSectionLabelBandHeightPx,
   resolveGroupedSectionLabelFontSizePx,
+  resolveGroupedSectionLabelLayout,
+  type GangSheetGroupedSectionLabelLayout,
 } from "@fresh-prints/shared/utils/gangSheetLabelRendering";
 import {
   buildGangSheetCustomerSectionSummaryLines,
@@ -91,7 +92,7 @@ interface PendingGroupedSection {
   sectionHeading: string;
   sheet: NestedSheet;
   summaryLines: string[];
-  sectionLabelBandHeightPx: number;
+  sectionLabelLayout: GangSheetGroupedSectionLabelLayout;
 }
 
 function packSectionsIntoContinuousPhysicalSheets(
@@ -114,7 +115,7 @@ function packSectionsIntoContinuousPhysicalSheets(
   };
 
   for (const section of sections) {
-    const sectionHeightPx = section.sectionLabelBandHeightPx + section.sheet.sheetHeightPx;
+    const sectionHeightPx = section.sectionLabelLayout.bandHeightPx + section.sheet.sheetHeightPx;
 
     if (
       currentSections.length > 0 &&
@@ -176,24 +177,26 @@ export async function composeContinuousCustomerGroupedGangSheetSheets(input: {
       input.request.sectionPricing,
     );
     const summaryLines = buildGangSheetCustomerSectionSummaryLines(sectionSummary);
-    const sectionLabelBandHeightPx = computeGroupedSectionLabelBandHeightPx(
-      sectionHeadingFontSizePx,
-      sectionSummaryFontSizePx,
-      summaryLines.length,
-    );
-
     for (const [groupSheetOffset, sheet] of nestResult.sheets.entries()) {
       const sectionHeading =
         nestResult.sheets.length > 1 && groupSheetOffset > 0
           ? buildGroupedGangSheetSectionContinuedHeading(group.heading)
           : group.heading;
+      const sectionLabelLayout = resolveGroupedSectionLabelLayout({
+        heading: sectionHeading,
+        summaryLines,
+        sheetWidthPx: input.sheetWidthPx,
+        sideMarginPx: input.spacingPx.sideMarginPx,
+        headingFontSizePx: sectionHeadingFontSizePx,
+        summaryFontSizePx: sectionSummaryFontSizePx,
+      });
 
       pendingSections.push({
         group,
         sectionHeading,
         sheet,
         summaryLines,
-        sectionLabelBandHeightPx,
+        sectionLabelLayout,
       });
     }
   }
@@ -240,18 +243,19 @@ export async function composeContinuousCustomerGroupedGangSheetSheets(input: {
     compositeLayers.push({ input: Buffer.from(showLabelSvg), left: 0, top: 0 });
 
     for (const pending of sections) {
-      const { group, sectionHeading, sheet, summaryLines, sectionLabelBandHeightPx } = pending;
+      const { group, sectionHeading, sheet, summaryLines, sectionLabelLayout } = pending;
       const sectionLabelSvg = buildGroupedSectionHeadingSvg({
         heading: sectionHeading,
         summaryLines,
         sheetWidthPx: input.sheetWidthPx,
-        bandHeightPx: sectionLabelBandHeightPx,
+        bandHeightPx: sectionLabelLayout.bandHeightPx,
         headingFontSizePx: sectionHeadingFontSizePx,
         summaryFontSizePx: sectionSummaryFontSizePx,
+        layout: sectionLabelLayout,
       });
       compositeLayers.push({ input: Buffer.from(sectionLabelSvg), left: 0, top: artworkTopOffset });
 
-      const sectionArtworkTop = artworkTopOffset + sectionLabelBandHeightPx;
+      const sectionArtworkTop = artworkTopOffset + sectionLabelLayout.bandHeightPx;
 
       const artworkLayers = await Promise.all(
         sheet.placements.map(async (placement) => {
@@ -311,11 +315,6 @@ export function countContinuousCustomerGroupedPhysicalSheets(input: {
   const showLabelBandHeightPx = computeGangSheetLabelBandHeightPx(input.labelFontSizePx);
   const sectionHeadingFontSizePx = input.labelFontSizePx;
   const sectionSummaryFontSizePx = resolveGroupedSectionLabelFontSizePx(input.labelFontSizePx);
-  const sectionLabelBandHeightPx = computeGroupedSectionLabelBandHeightPx(
-    sectionHeadingFontSizePx,
-    sectionSummaryFontSizePx,
-  );
-
   const pendingSections: PendingGroupedSection[] = input.sections.map((section, index) => ({
     group: {
       groupKey: String(index),
@@ -329,7 +328,14 @@ export function countContinuousCustomerGroupedPhysicalSheets(input: {
       placements: [],
     },
     summaryLines: [],
-    sectionLabelBandHeightPx,
+    sectionLabelLayout: resolveGroupedSectionLabelLayout({
+      heading: `section-${index}`,
+      summaryLines: ["", ""],
+      sheetWidthPx: Number.POSITIVE_INFINITY,
+      sideMarginPx: 0,
+      headingFontSizePx: sectionHeadingFontSizePx,
+      summaryFontSizePx: sectionSummaryFontSizePx,
+    }),
   }));
 
   return Math.max(

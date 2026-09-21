@@ -29,6 +29,8 @@ import { storageObjectPath } from "./lib/storageObjectPath";
 import { failedPrecondition, invalidArgument, notFound, permissionDenied, unauthenticated } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { resolveStaffArtworkPromotionMetadata } from "./staffArtworkPromotion";
+import type { PromoteStaffArtworkToAiReviewResponse } from "../../packages/shared/src/types/staffArtwork/staffArtworkAiReview.types";
+import { resolveStaffArtworkAiLifecycleRouting } from "./staffArtworkAiLifecycle";
 
 const COLLECTION = "staffArtworks";
 const MAX_TITLE_LENGTH = 160;
@@ -505,7 +507,7 @@ async function deleteStaffArtworkStorageAndDoc(
 
 export const promoteStaffArtworkToAiReview = onCall(
   { timeoutSeconds: 120, memory: "1GiB" },
-  async (request) => {
+  async (request): Promise<PromoteStaffArtworkToAiReviewResponse> => {
   if (!request.auth?.uid) throw unauthenticated();
   const caller = await loadCallerProfile(request.auth.uid);
   assertStaffCaller(caller);
@@ -552,10 +554,17 @@ export const promoteStaffArtworkToAiReview = onCall(
         ? (artwork.processing as Record<string, unknown>)
         : {};
     const existing = typeof artwork.promotedDesignId === "string" && artwork.promotedDesignId.trim() ? artwork.promotedDesignId.trim() : null;
+    const existingDesignSnapshot = existing
+      ? await tx.get(adminDb.collection("designs").doc(existing))
+      : null;
+    const existingDesign = existingDesignSnapshot?.exists
+      ? existingDesignSnapshot.data() ?? null
+      : null;
     if (existing && artwork.promotionStatus === "promoted") {
       return {
         designId: existing,
         alreadyPromoted: true,
+        aiLifecycle: resolveStaffArtworkAiLifecycleRouting(existingDesign),
         productionStoragePath: String(artwork.productionStoragePath ?? ""),
         previewStoragePath: String(artwork.previewStoragePath ?? ""),
         thumbnailStoragePath: String(artwork.thumbnailStoragePath ?? ""),
@@ -575,6 +584,9 @@ export const promoteStaffArtworkToAiReview = onCall(
         );
     const linkedDesignId = existing || linkedDesignSnapshot?.docs[0]?.id || null;
     if (linkedDesignId) {
+      const linkedDesign = existing
+        ? existingDesign
+        : linkedDesignSnapshot?.docs[0]?.data() ?? null;
       tx.update(ref, {
         promotedDesignId: linkedDesignId,
         promotionStatus: "queued",
@@ -585,6 +597,7 @@ export const promoteStaffArtworkToAiReview = onCall(
       return {
         designId: linkedDesignId,
         alreadyPromoted: false,
+        aiLifecycle: resolveStaffArtworkAiLifecycleRouting(linkedDesign),
         productionStoragePath: String(artwork.productionStoragePath ?? ""),
         previewStoragePath: resolveStaffArtworkDerivativePath(
           artwork,
@@ -660,6 +673,7 @@ export const promoteStaffArtworkToAiReview = onCall(
     return {
       designId,
       alreadyPromoted: false,
+      aiLifecycle: resolveStaffArtworkAiLifecycleRouting(null, { isNewDesign: true }),
       productionStoragePath: String(artwork.productionStoragePath),
       previewStoragePath: resolveStaffArtworkDerivativePath(
         artwork,
@@ -724,6 +738,7 @@ export const promoteStaffArtworkToAiReview = onCall(
     enqueueAttempted: false,
     enqueueQueued: false,
     enqueueReason: "deferred_to_client" as const,
+    aiLifecycle: result.aiLifecycle,
   };
 });
 

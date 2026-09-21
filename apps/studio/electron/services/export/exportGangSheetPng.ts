@@ -19,10 +19,11 @@ import {
 import { buildGangSheetFilename, buildGangSheetSheetLabel } from "@fresh-prints/shared/utils/showExportFilename";
 import {
   buildGroupedSectionHeadingSvg,
-  computeGroupedSectionLabelBandHeightPx,
   resolveGroupedSectionLabelFontSizePx,
   buildGangSheetLabelSvg,
   computeGangSheetLabelBandHeightPx,
+  resolveGangSheetLabelLayout,
+  resolveGroupedSectionLabelLayout,
 } from "@fresh-prints/shared/utils/gangSheetLabelRendering";
 import {
   buildGangSheetCustomerSectionSummaryLines,
@@ -263,9 +264,8 @@ export async function generateGangSheetPng(
     : null;
   const summaryLines = requestSummary ? buildGangSheetCustomerSectionSummaryLines(requestSummary) : null;
   const summaryFontSizePx = resolveGroupedSectionLabelFontSizePx(request.labelFontSizePx);
-  const labelBandHeightPx = summaryLines
-    ? computeGroupedSectionLabelBandHeightPx(request.labelFontSizePx, summaryFontSizePx, summaryLines.length)
-    : computeGangSheetLabelBandHeightPx(request.labelFontSizePx);
+  const sheetLabel = request.sheetLabel ?? request.baseFileName;
+  const usesRequestLabelLayout = request.cacheScope?.startsWith("print-request:") ?? false;
   const composedSheets: Array<{ fileName: string; lengthInches: number; heightPx: number; buffer: Buffer }> = [];
 
   for (const [sheetOffset, sheet] of nestResult.sheets.entries()) {
@@ -279,10 +279,32 @@ export async function generateGangSheetPng(
       sheetTotal,
     });
 
+    const label = buildGangSheetSheetLabel(sheetLabel, sheetIndex, sheetTotal);
+    const sheetGroupedLabelLayout = summaryLines
+      ? resolveGroupedSectionLabelLayout({
+          heading: label,
+          summaryLines,
+          sheetWidthPx,
+          sideMarginPx: spacingPx.sideMarginPx,
+          headingFontSizePx: request.labelFontSizePx,
+          summaryFontSizePx,
+        })
+      : null;
+    const sheetLabelLayout = !summaryLines && usesRequestLabelLayout
+      ? resolveGangSheetLabelLayout({
+          label,
+          sheetWidthPx,
+          sideMarginPx: spacingPx.sideMarginPx,
+          labelFontSizePx: request.labelFontSizePx,
+        })
+      : null;
+    const labelBandHeightPx =
+      sheetGroupedLabelLayout?.bandHeightPx ??
+      sheetLabelLayout?.bandHeightPx ??
+      computeGangSheetLabelBandHeightPx(request.labelFontSizePx);
     const sheetHeightPx = sheet.sheetHeightPx + labelBandHeightPx;
     const lengthInches = sheetHeightPx / EXPORT_DPI;
     const fileName = buildGangSheetFilename(request.baseFileName, sheetIndex, sheetTotal, lengthInches);
-    const label = buildGangSheetSheetLabel(request.sheetLabel ?? request.baseFileName, sheetIndex, sheetTotal);
     const labelSvg = summaryLines
       ? buildGroupedSectionHeadingSvg({
           heading: label,
@@ -291,12 +313,14 @@ export async function generateGangSheetPng(
           bandHeightPx: labelBandHeightPx,
           headingFontSizePx: request.labelFontSizePx,
           summaryFontSizePx,
+          layout: sheetGroupedLabelLayout ?? undefined,
         })
       : buildGangSheetLabelSvg({
           label,
           sheetWidthPx,
           bandHeightPx: labelBandHeightPx,
           labelFontSizePx: request.labelFontSizePx,
+          layout: sheetLabelLayout ?? undefined,
         });
 
     const compositeInputs = await Promise.all(

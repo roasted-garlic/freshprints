@@ -1220,14 +1220,21 @@ dashboard and designs callables fresh-load `users/{uid}` and enforce the role on
 Trusted callables:
 
 - `getPortalAdminUpcomingShowQueueDashboard` — upcoming show list + selected-show stats/PR
-  summaries; accepts optional `showId`
+  summaries and server-calculated pricing totals; accepts optional `showId`
 - `getPortalAdminShowQueueRequestDesigns` — lazy View Designs modal; requires `showId` +
   `printRequestId`; returns 15-minute signed derivative URLs only after allocation linkage proof
 
-Dashboard DTOs omit artwork. Modal DTOs omit Storage paths, filenames, design/upload IDs, and
-originals. Firestore and Storage Rules are unchanged. The admin route uses a separate shell/sidebar
-and does not mount customer mutation, navigation, notification, favorite, request, or upload
-providers. Staff sessions do not query or subscribe to customer documents.
+Dashboard DTOs omit artwork, raw `customerId`, email, username, and any stable cross-response
+customer identifier. A `customerGroupKey` is an opaque, non-reversible key salted for one response
+only; requests without customer identity receive unique non-merging keys. Dashboard search is
+limited to request ID, request name, and the existing display-safe customer identity label; notes
+are not searchable. The callable calculates request totals from saved item dimensions/quantities
+and selected-show totals from active non-canceled allocations, preferring immutable pricing
+snapshots and using canonical legacy fallback pricing. Any unpriceable required row returns a
+`null` total rather than a partial or zero total. Modal DTOs omit Storage paths, filenames,
+design/upload IDs, and originals. Firestore and Storage Rules are unchanged. The admin route uses
+a separate shell/sidebar and does not mount customer mutation, navigation, notification, favorite,
+request, or upload providers. Staff sessions do not query or subscribe to customer documents.
 
 # Portal Admin Staff Artwork upload and canonical AI Review lifecycle (ADR-FP-190)
 

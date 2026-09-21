@@ -33,5 +33,7 @@ export function compareStaffInboxItemsForDisplay(left: StaffInboxItem, right: St
 
   const kindPriority = (kind: StaffInboxItemKind) => (kind === "show_queue_full" ? 1 : 0);
 
-  return kindPriority(left.kind) - kindPriority(right.kind);
+  const kindDiff = kindPriority(left.kind) - kindPriority(right.kind);
+
+  return kindDiff !== 0 ? kindDiff : left.id.localeCompare(right.id);
 }

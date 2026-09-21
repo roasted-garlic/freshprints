@@ -32,10 +32,16 @@ export interface PortalAdminShowRequestSummary {
   printRequestId: string;
   name: string;
   kind: PortalAdminShowQueueRequestKind;
+  /** Opaque only within this response; never a customer identifier across responses. */
+  customerGroupKey: string;
   customerIdentityLabel?: string;
   designQty: number;
   printQty: number;
   statusSummary: string;
+  /** Null means one or more saved request items could not be priced safely. */
+  requestTotalPriceUsd: number | null;
+  /** Null means no active allocations or an active allocation could not be priced safely. */
+  selectedShowAllocationTotalPriceUsd: number | null;
 }
 
 export interface PortalAdminSelectedShowDashboard {

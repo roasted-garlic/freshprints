@@ -1,6 +1,9 @@
 import type { NestedPlacement } from "./gangSheetNesting";
 import { nestBoxesIntoShelvesWithHeightCap, type NestingSpacingPx } from "./gangSheetNesting";
-import { computeGangSheetLabelBandHeightPx } from "./gangSheetLabelRendering";
+import {
+  computeGangSheetLabelBandHeightPx,
+  resolveGroupedSectionLabelLayout,
+} from "./gangSheetLabelRendering";
 import { buildGroupedGangSheetSectionContinuedHeading } from "./groupPrintRequestsByShow";
 import {
   buildGangSheetProductionGroups,
@@ -35,10 +38,10 @@ export function planContinuousCustomerGroupedGangSheetLayout(input: {
   spacingPx: NestingSpacingPx;
   maxSheetHeightPx: number;
   sheetLabelFontSizePx: number;
+  sectionPricing?: import("../constants/gangSheetSectionPricingSettings.constants").GangSheetSectionPricingConfig;
 }): ContinuousCustomerGroupedLayoutPlan {
   const showLabelBandHeightPx = computeGangSheetLabelBandHeightPx(input.sheetLabelFontSizePx);
-  const sectionLabelBandHeightPx = computeGangSheetLabelBandHeightPx(input.sheetLabelFontSizePx);
-  const productionGroups = buildGangSheetProductionGroups(input.images);
+  const productionGroups = buildGangSheetProductionGroups(input.images, input.sectionPricing);
 
   const physicalSheets: ContinuousGroupedPhysicalSheetPlan[] = [];
   let currentSections: ContinuousGroupedSectionPlan[] = [];
@@ -69,6 +72,14 @@ export function planContinuousCustomerGroupedGangSheetLayout(input: {
         nestResult.sheets.length > 1 && groupSheetOffset > 0
           ? buildGroupedGangSheetSectionContinuedHeading(group.heading)
           : group.heading;
+      const sectionLabelBandHeightPx = resolveGroupedSectionLabelLayout({
+        heading: sectionHeading,
+        summaryLines: group.summaryLines,
+        sheetWidthPx: input.sheetWidthPx,
+        sideMarginPx: input.spacingPx.sideMarginPx,
+        headingFontSizePx: input.sheetLabelFontSizePx,
+        summaryFontSizePx: Math.round(input.sheetLabelFontSizePx * 0.75),
+      }).bandHeightPx;
       const sectionHeightPx = sectionLabelBandHeightPx + nestSheet.sheetHeightPx;
 
       if (
