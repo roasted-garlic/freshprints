@@ -111,4 +111,4 @@ Portal admin sign-out no longer sticks on “Redirecting to staff sign-in…” 
 - [ ] **`references/project-chatgpt-handoff/CURRENT-STATE.md` updated** (handoff package not present)
 - [ ] Other handoff files (N/A)
 
-**Recommended next action for user:** After App Hosting traffic is live, smoke admin Show Queue sign-out and bottom spacing on production.
+**Recommended next action for user:** On production as staff: Sign out from Show Queue → confirm Login; confirm bottom spacing. Reply `PROD ADMIN SIGNOUT/PADDING QA: PASS` (or FAIL / PASS WITH NOTES).
