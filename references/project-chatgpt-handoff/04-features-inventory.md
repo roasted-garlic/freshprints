@@ -1,5 +1,14 @@
 # Features Inventory
 
+> 2026-09-24: **Orientation-aware gang-sheet shelf packing — CLOSED (DEV)** — Shared Standard,
+> Sheet per Customer, and Grouped by Customer nesting now evaluates bounded original/rotated
+> candidates before row membership, admits either orientation when it fits, and uses resolved
+> dimensions for height-cap decisions. Exact quantities, cuttable shelf rows, and compositor
+> rotation semantics are preserved. The accepted regression fixture is **30,477 px / 8 rows**;
+> Owner DEV QA generated two real DEV gang sheets and confirmed the original rotation case plus an
+> additional regression case. Signoff **approved_with_notes**; no commit/push/deploy/publish or
+> production action occurred.
+
 > 2026-09-17: **Shared length-based show pricing + customer navigation — SIGNED OFF; production
 > infrastructure deployed; Studio blocked** — Four width tiers now share four length bands and configurable surcharges; new
 > allocations preserve immutable pricing snapshots; Portal uses a customer-safe projection;

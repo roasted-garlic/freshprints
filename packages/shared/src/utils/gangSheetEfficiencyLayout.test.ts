@@ -50,4 +50,25 @@ describe("planEfficiencyGangSheetLayout regression contract", () => {
     // topBottom + height + topBottom = 150 + 900 + 150
     assert.equal(plan.totalSheetHeightPx, SPACING.topBottomMarginPx + 900 + SPACING.topBottomMarginPx);
   });
+
+  it("packs the recorded landscape A/B fixture deterministically with exact quantities", () => {
+    const input = {
+      images: [
+        { allocationId: "a", quantity: 10, widthPx: 3900, heightPx: 2805 },
+        { allocationId: "b", quantity: 5, widthPx: 3600, heightPx: 2427 },
+      ],
+      sheetWidthPx: 6900,
+      spacingPx: SPACING,
+      maxSheetHeightPx: 90000,
+    };
+
+    const first = planEfficiencyGangSheetLayout(input);
+    const second = planEfficiencyGangSheetLayout(input);
+
+    assert.equal(first.totalSheetHeightPx, 30477);
+    assert.equal(first.sheetCount, 1);
+    assert.equal(first.sheetPlacementIds.flat().length, 15);
+    assert.deepEqual(first, second);
+    assert.deepEqual(first.skippedIds, []);
+  });
 });

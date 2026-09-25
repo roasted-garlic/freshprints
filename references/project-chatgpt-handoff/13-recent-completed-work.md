@@ -1,5 +1,23 @@
 # Recent Completed Work
 
+## 2026-09-24 - Orientation-Aware Gang-Sheet Shelf Packing — SIGNED OFF (DEV)
+
+Goal `gang-sheet-orientation-aware-shelf-packing-efficiency` is **DONE** with Owner DEV QA
+**PASS** and Signoff **approved_with_notes**. Shared deterministic shelf nesting now evaluates
+bounded original/rotated candidates before row membership, admits artwork when either orientation
+fits, applies resolved dimensions to height caps, preserves exact quantities and cuttable shelf
+rows, and versions the nesting cache fingerprint. The exact regression fixture is accepted at
+**30,477 px / 8 rows** (baseline **42,585 px / 15 rows**); the earlier 33,675 px / 10-row
+expectation is documented as conservative/incorrect. Focused tests **73/73 PASS**; Studio
+typecheck, targeted lint, Vite build, and diff check pass. Owner generated two real DEV gang sheets,
+including the original 13.00 × 9.35 and 12.00 × 8.09 artwork, and confirmed rotated artwork,
+efficient packing, and clean cuttable rows. No commit, push, deploy, publish, Firebase, or
+production mutation occurred.
+
+Signoff:
+`docs/workflow/reviews/2026-09-24-gang-sheet-orientation-aware-shelf-packing-efficiency-signoff.md`.
+Next step: separate explicit owner-authorized commit/push task on `development`.
+
 ## 2026-09-21 - Studio / Portal Print Request, Inbox, and AI Queue Batch — PRODUCTION COMPLETE
 
 Goal `studio-portal-print-request-inbox-ai-queue-batch` is **CLOSED**. Owner DEV QA **PASS**;

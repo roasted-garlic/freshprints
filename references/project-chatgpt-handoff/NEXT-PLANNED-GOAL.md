@@ -1,16 +1,17 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-17
+**Updated:** 2026-09-24
 
-## FreshForge managed goal — production rollout blocked on Studio release pipeline
+## No active managed goal — separate commit/push task recommended
 
-Current goal: `print-request-length-surcharge-and-customer-navigation` (Signoff
-**approved_with_notes**). Protected PR #101, exact cumulative production Rules/Functions rollout,
-Portal App Hosting rollout, and production smoke are complete. Studio stable `1.0.15` remains
-unpublished because macOS packaging stalled on repeated GitHub runners and Release asset uploads
-returned HTTP 500/502; stable `1.0.14` remains current. Retry the exact release workflow after the
-external blocker clears, verify eight assets, publish `1.0.15`, run final Studio smoke, and then
-return FreshForge to **IDLE**.
+`gang-sheet-orientation-aware-shelf-packing-efficiency` is closed with Owner DEV QA **PASS** and
+Signoff **approved_with_notes**. The accepted regression result is 30,477 px / 8 rows. No commit
+or push was performed by design.
+
+Exact recommended next step: start a separate owner-authorized commit/push task on `development`
+that reviews the goal-scoped diff, stages only the intended files, runs the final required checks,
+creates the reviewed commit, and pushes `development`. Do not combine that task with deployment,
+publication, Firebase, or production mutation.
 
 ## Historical Internal reconciliation / Admin Staff Artwork / DEV access — CLOSED
 

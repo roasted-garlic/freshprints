@@ -1,5 +1,19 @@
 # Fresh Prints Roadmap
 
+> 2026-09-24: **Orientation-aware gang-sheet shelf packing — SIGNED OFF (DEV)** — Goal
+> `gang-sheet-orientation-aware-shelf-packing-efficiency` is **DONE** with Owner DEV QA
+> **PASS** and Signoff **approved_with_notes**. Shared deterministic shelf nesting now evaluates
+> bounded original/rotated candidates before row membership, admits artwork when either
+> orientation fits, uses resolved dimensions for height caps, preserves exact quantities and
+> cuttable rows, and versions the nesting cache fingerprint. The exact 300-DPI regression fixture
+> is accepted at **30,477 px / 8 rows** (from 42,585 px / 15 rows); the earlier 33,675 px / 10-row
+> expectation is documented as conservative/incorrect. Focused validation **73/73 PASS**;
+> Studio typecheck, targeted lint, Vite build, and diff check pass. Owner generated two real DEV
+> gang sheets and confirmed rotated artwork, efficient packing, and clean shelf rows. No commit,
+> push, deploy, publish, Firebase, or production mutation occurred. Next: separate explicit
+> owner-authorized commit/push task on `development`.
+> Signoff: `docs/workflow/reviews/2026-09-24-gang-sheet-orientation-aware-shelf-packing-efficiency-signoff.md`.
+
 > 2026-09-21: **Studio / Portal Print Request, Inbox, and AI Queue Batch — PRODUCTION COMPLETE; FreshForge IDLE** — Goal `studio-portal-print-request-inbox-ai-queue-batch` closed after Owner DEV QA PASS, Signoff approved_with_notes, PR #106 / production `f09dafc6`, Studio **v1.0.18** Latest, Functions `getPortalAdminUpcomingShowQueueDashboard` + `promoteStaffArtworkToAiReview` ACTIVE, Portal `fresh-prints-portal-build-2026-09-21-001` at 100% traffic, and Staff Inbox indexes reconciled (3 READY composites; upcomingShows covered by GCP single-field controls). No Rules/Storage/migration/secret/IAM changes.
 > Signoff: `docs/workflow/reviews/2026-09-21-studio-portal-print-request-inbox-ai-queue-batch-signoff.md`. Rollout: `docs/workflow/reviews/2026-09-21-studio-portal-print-request-inbox-ai-queue-batch-production-rollout.md`.
 

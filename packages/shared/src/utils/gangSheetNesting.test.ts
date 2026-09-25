@@ -132,18 +132,17 @@ describe("nestBoxesIntoShelves", () => {
     assert.equal(result.sheetHeightPx, SPACING.topBottomMarginPx + 100 + SPACING.topBottomMarginPx);
   });
 
-  it("only rotates as many equally-tall portrait boxes as still fit the row, not all of them", () => {
+  it("does not add rotation churn when it cannot reduce the completed row", () => {
     const boxes: NestableBox[] = [
       { id: "a", widthPx: 100, heightPx: 400 },
       { id: "b", widthPx: 100, heightPx: 400 },
     ];
-    // Usable width 850: rotating just "a" fits (100 (b, unrotated) + 400 (a, rotated) + 150 gutter =
-    // 650 <= 850), but rotating both would not (400 + 400 + 150 = 950 > 850), so only one rotates.
+    // Rotating one box still leaves the row 400px tall, so the fewer-rotations tie-break retains
+    // the compatibility orientation.
     const result = nestBoxesIntoShelves(boxes, 1000, SPACING);
 
     const rotatedCount = result.placements.filter((p) => p.rotated).length;
-    assert.equal(rotatedCount, 1);
-    // Row height must reflect whichever box stayed unrotated (400), since one box is still 400 tall.
+    assert.equal(rotatedCount, 0);
     assert.equal(result.sheetHeightPx, SPACING.topBottomMarginPx + 400 + SPACING.topBottomMarginPx);
   });
 
@@ -181,7 +180,7 @@ describe("nestBoxesIntoShelves", () => {
   it("skips a box wider than the sheet's usable width while still nesting the rest", () => {
     const sheetWidthPx = SPACING.sideMarginPx * 2 + 100;
     const boxes: NestableBox[] = [
-      { id: "oversize", widthPx: 500, heightPx: 100 },
+      { id: "oversize", widthPx: 500, heightPx: 200 },
       { id: "fits", widthPx: 80, heightPx: 60 },
     ];
     const result = nestBoxesIntoShelves(boxes, sheetWidthPx, SPACING);
@@ -279,7 +278,7 @@ describe("nestBoxesIntoShelvesWithHeightCap", () => {
   it("still skips oversize boxes while splitting the rest across sheets", () => {
     const sheetWidthPx = SPACING.sideMarginPx * 2 + 100;
     const boxes: NestableBox[] = [
-      { id: "oversize", widthPx: 500, heightPx: 100 },
+      { id: "oversize", widthPx: 500, heightPx: 200 },
       { id: "fits", widthPx: 80, heightPx: 60 },
     ];
     const result = nestBoxesIntoShelvesWithHeightCap(boxes, sheetWidthPx, SPACING, 10000);
@@ -296,15 +295,12 @@ describe("nestBoxesIntoShelvesWithHeightCap", () => {
   });
 
   it("rotates a lone tall box even when splitting across sheets", () => {
-    // Sheet too narrow for two 100px-wide boxes side by side, so each lands alone on its own row.
-    // The height-cap overflow check happens before rotation is decided (rotation only applies
-    // once a row is known to hold exactly one box), so it uses each box's pre-rotation height —
-    // here that forces each box onto its own sheet, but each is still rotated once placed (a lone
-    // box has no other row content to conflict with, so it always rotates when portrait).
-    const sheetWidthPx = SPACING.sideMarginPx * 2 + 100;
+    // The boxes cannot share a row, but each lone portrait box can rotate within the 500px usable
+    // width. The finalized row height is therefore used for the cap decision and placement.
+    const sheetWidthPx = SPACING.sideMarginPx * 2 + 500;
     const boxes: NestableBox[] = [
-      { id: "tall-narrow-1", widthPx: 100, heightPx: 400 },
-      { id: "tall-narrow-2", widthPx: 100, heightPx: 400 },
+      { id: "tall-narrow-1", widthPx: 300, heightPx: 400 },
+      { id: "tall-narrow-2", widthPx: 300, heightPx: 400 },
     ];
     const maxSheetHeightPx = SPACING.topBottomMarginPx * 2 + 400;
 
@@ -354,5 +350,160 @@ describe("standard gang sheet two-up at 300 DPI", () => {
     assert.equal(result.skipped.length, 0);
     assert.equal(result.placements.length, 2);
     assert.notEqual(result.placements[0]?.y, result.placements[1]?.y);
+  });
+});
+
+describe("orientation-aware shelf-packing regressions", () => {
+  it("reduces the exact 300 DPI A/B fixture while preserving all copies and shelf bounds", () => {
+    const spacing: NestingSpacingPx = {
+      sideMarginPx: 75,
+      topBottomMarginPx: 150,
+      gutterPx: 150,
+    };
+    const aBoxes = Array.from({ length: 10 }, (_, index) => ({
+      id: `A-${index + 1}`,
+      widthPx: 3900,
+      heightPx: 2805,
+    }));
+    const bBoxes = Array.from({ length: 5 }, (_, index) => ({
+      id: `B-${index + 1}`,
+      widthPx: 3600,
+      heightPx: 2427,
+    }));
+    const boxes = interleaveGroups([aBoxes, bBoxes]);
+    const dimensions = new Map(boxes.map((box) => [box.id, box]));
+    const first = nestBoxesIntoShelvesWithHeightCap(boxes, 6900, spacing, 90000);
+    const second = nestBoxesIntoShelvesWithHeightCap(boxes, 6900, spacing, 90000);
+
+    assert.deepEqual(first, second);
+    assert.equal(first.skipped.length, 0);
+    assert.equal(first.sheets.length, 1);
+    assert.equal(first.sheets[0]?.placements.length, 15);
+    assert.equal(first.sheets[0]?.sheetHeightPx, 30477);
+    assert.equal(new Set(first.sheets[0]?.placements.map((placement) => placement.id)).size, 15);
+
+    const rows = new Map<number, typeof first.sheets[number]["placements"]>();
+    for (const placement of first.sheets[0]?.placements ?? []) {
+      const row = rows.get(placement.y) ?? [];
+      row.push(placement);
+      rows.set(placement.y, row);
+    }
+    assert.ok([...rows.values()].some((row) => row.length >= 2 && row.every((placement) => placement.rotated)));
+
+    const orderedRows = [...rows.entries()].sort(([left], [right]) => left - right);
+    let previousBottom = spacing.topBottomMarginPx;
+    for (const [rowY, row] of orderedRows) {
+      assert.ok(rowY >= previousBottom);
+      let previousRight = spacing.sideMarginPx;
+      let rowBottom = rowY;
+      for (const placement of [...row].sort((left, right) => left.x - right.x)) {
+        const source = dimensions.get(placement.id);
+        assert.ok(source);
+        const widthPx = placement.rotated ? source!.heightPx : source!.widthPx;
+        const heightPx = placement.rotated ? source!.widthPx : source!.heightPx;
+        assert.ok(placement.x >= spacing.sideMarginPx);
+        assert.ok(placement.x + widthPx <= 6900 - spacing.sideMarginPx);
+        assert.ok(placement.x >= previousRight);
+        previousRight = placement.x + widthPx + spacing.gutterPx;
+        rowBottom = Math.max(rowBottom, rowY + heightPx);
+      }
+      previousBottom = rowBottom + spacing.gutterPx;
+    }
+  });
+
+  it("keeps a landscape rotation when it materially reduces two-row feed height", () => {
+    const result = nestBoxesIntoShelves(
+      [
+        { id: "a", widthPx: 600, heightPx: 400 },
+        { id: "b", widthPx: 600, heightPx: 400 },
+      ],
+      950,
+      { sideMarginPx: 0, topBottomMarginPx: 0, gutterPx: 150 },
+    );
+
+    assert.equal(result.placements.length, 2);
+    assert.equal(result.placements[0]?.y, result.placements[1]?.y);
+    assert.equal(result.placements[0]?.rotated, true);
+    assert.equal(result.placements[1]?.rotated, true);
+    assert.equal(result.sheetHeightPx, 600);
+  });
+
+  it("rejects a landscape rotation when the taller shared row would be worse", () => {
+    const result = nestBoxesIntoShelves(
+      [
+        { id: "a", widthPx: 750, heightPx: 500 },
+        { id: "b", widthPx: 100, heightPx: 80 },
+      ],
+      850,
+      { sideMarginPx: 0, topBottomMarginPx: 0, gutterPx: 150 },
+    );
+
+    assert.equal(result.placements.length, 2);
+    assert.notEqual(result.placements[0]?.y, result.placements[1]?.y);
+    assert.equal(result.placements.find((placement) => placement.id === "a")?.rotated, false);
+    assert.equal(result.sheetHeightPx, 730);
+  });
+
+  it("can rotate a non-height-driving item when it enables a future row member", () => {
+    const result = nestBoxesIntoShelves(
+      [
+        { id: "b", widthPx: 300, heightPx: 500 },
+        { id: "a", widthPx: 500, heightPx: 400 },
+        { id: "c", widthPx: 100, heightPx: 350 },
+      ],
+      1000,
+      { sideMarginPx: 0, topBottomMarginPx: 0, gutterPx: 100 },
+    );
+
+    assert.equal(new Set(result.placements.map((placement) => placement.y)).size, 1);
+    assert.equal(result.placements.find((placement) => placement.id === "a")?.rotated, true);
+    assert.equal(result.sheetHeightPx, 500);
+  });
+
+  it("retains original orientation on an exact feed-height tie", () => {
+    const result = nestBoxesIntoShelves(
+      [
+        { id: "a", widthPx: 700, heightPx: 500 },
+        { id: "b", widthPx: 300, heightPx: 100 },
+      ],
+      1000,
+      { sideMarginPx: 0, topBottomMarginPx: 0, gutterPx: 100 },
+    );
+
+    assert.equal(result.sheetHeightPx, 700);
+    assert.equal(result.placements.find((placement) => placement.id === "a")?.rotated, false);
+    assert.notEqual(result.placements[0]?.y, result.placements[1]?.y);
+  });
+
+  it("places a box whose original width is too large when only its rotation fits, and skips a box with neither fit", () => {
+    const result = nestBoxesIntoShelves(
+      [
+        { id: "rotated-fit", widthPx: 400, heightPx: 250 },
+        { id: "too-wide", widthPx: 400, heightPx: 350 },
+      ],
+      300,
+      { sideMarginPx: 0, topBottomMarginPx: 0, gutterPx: 50 },
+    );
+
+    assert.deepEqual(result.skipped, [{ id: "too-wide", reason: "too_wide_for_sheet" }]);
+    assert.equal(result.placements.length, 1);
+    assert.equal(result.placements[0]?.id, "rotated-fit");
+    assert.equal(result.placements[0]?.rotated, true);
+  });
+
+  it("uses finalized orientation for the height-cap join boundary", () => {
+    const spacing = { sideMarginPx: 0, topBottomMarginPx: 0, gutterPx: 100 };
+    const boxes = [
+      { id: "a", widthPx: 700, heightPx: 500 },
+      { id: "b", widthPx: 300, heightPx: 600 },
+    ];
+    const fits = nestBoxesIntoShelvesWithHeightCap(boxes, 1000, spacing, 700);
+    const splits = nestBoxesIntoShelvesWithHeightCap(boxes, 1000, spacing, 699);
+
+    assert.equal(fits.sheets.length, 1);
+    assert.equal(fits.sheets[0]?.sheetHeightPx, 700);
+    assert.equal(fits.sheets[0]?.placements.find((placement) => placement.id === "a")?.rotated, true);
+    assert.equal(splits.sheets.length, 2);
+    assert.ok(splits.sheets.every((sheet) => sheet.sheetHeightPx <= 699));
   });
 });

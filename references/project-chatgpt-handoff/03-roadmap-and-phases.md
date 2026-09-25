@@ -1,5 +1,22 @@
 # Roadmap and Phases
 
+## 2026-09-24 — Orientation-aware gang-sheet shelf packing — SIGNED OFF (DEV)
+
+- Goal `gang-sheet-orientation-aware-shelf-packing-efficiency` is **DONE** with Signoff
+  **approved_with_notes** after Owner DEV QA **PASS**.
+- Shared shelf nesting evaluates a fixed deterministic set of original/rotated candidates before
+  row membership, admits either orientation when it fits, uses resolved row dimensions for height
+  caps, and versions the nesting cache fingerprint.
+- The exact regression fixture is accepted at **30,477 px / 8 rows**, with exact quantities,
+  bounds, and cuttable shelf rows preserved. The earlier 33,675 px / 10-row expectation is
+  documented as conservative/incorrect.
+- Focused validation **73/73 PASS**; Studio typecheck, targeted lint, Vite build, and diff check
+  pass. Owner generated two real DEV gang sheets and confirmed the original rotation case and an
+  additional regression case.
+- No commit, push, deployment, publication, Firebase, or production action occurred. The next
+  step is a separate explicitly authorized commit/push task on `development`.
+- Signoff: `docs/workflow/reviews/2026-09-24-gang-sheet-orientation-aware-shelf-packing-efficiency-signoff.md`.
+
 ## 2026-09-17 — Shared length-based show pricing + customer navigation — SIGNED OFF; PROD INFRASTRUCTURE DEPLOYED; STUDIO BLOCKED
 
 - Goal `print-request-length-surcharge-and-customer-navigation` is signed off

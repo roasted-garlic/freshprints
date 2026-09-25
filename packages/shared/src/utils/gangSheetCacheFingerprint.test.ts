@@ -7,6 +7,7 @@ import {
   buildGangSheetCacheFingerprint,
   sanitizeGangSheetCacheShowId,
 } from "./gangSheetCacheFingerprint";
+import { GANG_SHEET_NESTING_ALGORITHM_VERSION } from "./gangSheetNesting";
 
 function sampleRequest(overrides: Partial<ExportGangSheetPngRequest> = {}): ExportGangSheetPngRequest {
   return {
@@ -42,6 +43,11 @@ function sampleRequest(overrides: Partial<ExportGangSheetPngRequest> = {}): Expo
 }
 
 describe("buildGangSheetCacheFingerprint", () => {
+  it("uses the current shared nesting algorithm version", () => {
+    assert.equal(GANG_SHEET_NESTING_ALGORITHM_VERSION, 2);
+    assert.notEqual(buildGangSheetCacheFingerprint(sampleRequest()), "");
+  });
+
   it("is stable regardless of image order or download URL", () => {
     const first = buildGangSheetCacheFingerprint(sampleRequest());
     const second = buildGangSheetCacheFingerprint(

@@ -2,21 +2,22 @@
 
 ## CURRENT AUTHORITATIVE PHASE — IDLE
 
-**Last updated:** 2026-09-21
+**Last updated:** 2026-09-24
 
-FreshForge is **IDLE**. Managed goal `studio-portal-print-request-inbox-ai-queue-batch` is **CLOSED** after Owner DEV QA PASS, Signoff **approved_with_notes**, and full coordinated production rollout.
+FreshForge is **IDLE**. Managed goal `gang-sheet-orientation-aware-shelf-packing-efficiency` is
+**CLOSED** after Owner DEV QA **PASS** and Signoff **approved_with_notes**. No commit, push,
+deploy, publish, Firebase, or production mutation occurred.
 
 | Field | Value |
 |------|-------|
-| Production SHA | `f09dafc6a9566fa0ee021646e5b7d1318cc010a9` (PR [#106](https://github.com/roasted-garlic/freshprints/pull/106)) |
-| Goal commit | `35b0ea80b8821726f8cf1a9c1c23abe3ba0b3bbe` |
-| Studio | **`v1.0.18` Latest** — workflow `35619359510`; 8 assets; rollback `v1.0.17` |
-| Functions | `getPortalAdminUpcomingShowQueueDashboard` + `promoteStaffArtworkToAiReview` **ACTIVE** |
-| Portal | `fresh-prints-portal-build-2026-09-21-001` **100%** traffic; smoke HTTP 200 |
-| Indexes | 3 Staff Inbox composites **READY**; `upcomingShows(updatedAt+__name__)` covered by GCP single-field controls |
-| Rules / Storage / secrets / IAM / migrations | **unchanged** |
-| Signoff | `docs/workflow/reviews/2026-09-21-studio-portal-print-request-inbox-ai-queue-batch-signoff.md` |
-| Rollout record | `docs/workflow/reviews/2026-09-21-studio-portal-print-request-inbox-ai-queue-batch-production-rollout.md` |
+| Production SHA | **None — no production action** |
+| Goal commit | **None — commit/push intentionally deferred to a separate authorized task** |
+| DEV behavior | Shared orientation-aware deterministic shelf packing; exact fixture **30,477 px / 8 rows** |
+| Owner QA | **PASS** — two real DEV gang sheets verified, including the original 13.00 × 9.35 / 12.00 × 8.09 case |
+| Automated evidence | **73/73 focused tests PASS**; Studio typecheck, targeted lint, Vite build, and diff check PASS |
+| Rules / Storage / secrets / IAM / migrations / Firebase | **unchanged** |
+| Signoff | `docs/workflow/reviews/2026-09-24-gang-sheet-orientation-aware-shelf-packing-efficiency-signoff.md` |
+| Next step | Separate explicit owner-authorized commit/push task on `development`; no deployment implied |
 
 ## PREVIOUS CLOSED GOAL — STAFF ARTWORK AI TITLE CORRECTIVE
 

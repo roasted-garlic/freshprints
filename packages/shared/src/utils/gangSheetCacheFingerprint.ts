@@ -3,6 +3,7 @@ import {
   GANG_SHEET_LABEL_FONT_METRICS_VERSION,
   GANG_SHEET_LABEL_LAYOUT_VERSION,
 } from "./gangSheetLabelRendering";
+import { GANG_SHEET_NESTING_ALGORITHM_VERSION } from "./gangSheetNesting";
 
 function normalizeGroupedHeadingInput(value: string | undefined): string {
   return value?.trim() ?? "";
@@ -57,6 +58,7 @@ export function buildGangSheetCacheFingerprint(request: ExportGangSheetPngReques
     .sort((left, right) => left.assetId.localeCompare(right.assetId));
 
   const payload = JSON.stringify({
+    gangSheetNestingAlgorithmVersion: GANG_SHEET_NESTING_ALGORITHM_VERSION,
     gangSheetLabelLayoutVersion: GANG_SHEET_LABEL_LAYOUT_VERSION,
     gangSheetLabelFontMetricsVersion: GANG_SHEET_LABEL_FONT_METRICS_VERSION,
     baseFileName: request.baseFileName,

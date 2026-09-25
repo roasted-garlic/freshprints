@@ -2,6 +2,22 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### Orientation-aware gang-sheet shelf packing (DEV signed off 2026-09-24)
+
+- Shared shelf nesting evaluates a fixed deterministic candidate set containing original and
+  90-degree-swapped orientations before committing row membership; a copy is skipped only when
+  both orientations exceed usable width.
+- Resolved row dimensions are authoritative for uncapped packing, height-cap peeking, and capped
+  placement. Exact quantities, placement IDs, gutters, bounds, and cuttable horizontal shelf rows
+  remain preserved across Standard, Sheet per Customer, and Grouped by Customer paths.
+- The exact real-world regression fixture is accepted at **30,477 px / 8 rows**. The earlier
+  33,675 px / 10-row expectation is conservative/incorrect and is not an implementation defect.
+- Nesting algorithm version `2` participates in cache fingerprints. Existing cache directories are
+  not deleted; old exact fingerprints are not treated as current.
+- Owner DEV QA generated two real DEV gang sheets and passed both, including the original
+  13.00 × 9.35 / 12.00 × 8.09 rotation case. Signoff is **approved_with_notes**.
+- No commit, push, deployment, publication, Firebase, data, or production mutation occurred.
+
 ### Shared length-based pricing + cross-origin Working invariant (signed off 2026-09-17)
 
 - Price and weight are derived from the shared width-plus-length resolver; allocation snapshots
